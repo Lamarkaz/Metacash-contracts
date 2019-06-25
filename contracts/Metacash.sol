@@ -201,7 +201,7 @@ contract SmartWallet {
     
     /**
      * @dev Internal function that creates any contract
-     * @param bytecode of the new contract
+     * @param data bytecode of the new contract
      */
     function _execCreate(bytes memory data) internal returns (bool result) {
         address deployedContract;
@@ -213,7 +213,7 @@ contract SmartWallet {
     
     /**
      * @dev Internal function that creates any contract using create2
-     * @param bytecode of the new contract
+     * @param data bytecode of the new contract
      * @param salt Create2 salt parameter
      */
     function _execCreate2(bytes memory data, uint256 salt) internal returns (bool result) {
