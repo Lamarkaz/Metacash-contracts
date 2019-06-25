@@ -333,7 +333,7 @@ contract SmartWallet {
      * @param messageHash Original hash
      */
     function recover(bytes32 messageHash, uint8 v, bytes32 r, bytes32 s) internal pure returns (address) {
-        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
+        bytes memory prefix = "\x19Metacash Signed Message:\n32";
         bytes32 prefixedMessageHash = keccak256(abi.encodePacked(prefix, messageHash));
         return ecrecover(prefixedMessageHash, v, r, s);
     }
@@ -610,7 +610,7 @@ contract Factory {
      * @param messageHash Original hash
      */
     function recover(bytes32 messageHash, uint8 v, bytes32 r, bytes32 s) internal pure returns (address) {
-        bytes memory prefix = "\x19Ethereum Signed Message:\n32";
+        bytes memory prefix = "\x19Metacash Signed Message:\n32";
         bytes32 prefixedMessageHash = keccak256(abi.encodePacked(prefix, messageHash));
         return ecrecover(prefixedMessageHash, v, r, s);
     }
