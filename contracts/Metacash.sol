@@ -186,19 +186,7 @@ contract SmartWallet {
             result := call(gas, contractAddress, msgValue, add(data, 0x20), mload(data), 0, 0)
         }
     }
-    
-    /**
-     * @dev Internal function that executes a delegatecallcall to any contract
-     * @param contractAddress Address of the contract to delegatecall
-     * @param data calldata to send to contractAddress
-     */
-    function _execDelegatecall(address contractAddress, bytes memory data) internal returns (bool result) {
-        assembly {
-            result := delegatecall(gas, contractAddress, add(data, 0x20), mload(data), 0, 0)
-        }
 
-    }
-    
     /**
      * @dev Internal function that creates any contract
      * @param data bytecode of the new contract
@@ -247,33 +235,6 @@ contract SmartWallet {
         uint currentNonce = abi.decode(store["nonce"], (uint));
         require(abi.decode(store["owner"], (address)) == recover(keccak256(abi.encodePacked(msg.sender, contractAddress, tokenContract, abi.decode(store["factory"], (address)), data, msgValue, fee, tx.gasprice, currentNonce)), v, r, s));
         require(_execCall(contractAddress, data, msgValue));
-        IERC20 token = IERC20(tokenContract);
-        store["nonce"] = abi.encode(currentNonce+1);
-        require(token.transfer(msg.sender, fee));
-        return true;
-    }
-    
-    /**
-     * @dev Public function that allows the owner to execute a delegatecall to any contract
-     * @param contractAddress Address of the contract to delegatecall
-     * @param data calldata to send to contractAddress
-     */
-    function execDelegatecall(address contractAddress, bytes memory data) onlyOwner public returns (bool) {
-        require(_execDelegatecall(contractAddress, data));
-        return true;
-    }
-    
-    /**
-     * @dev Public function that allows a relayer to execute a delegatecall to any contract on behalf of the owner
-     * @param contractAddress Address of the contract to delegatecall
-     * @param data calldata to send to contractAddress
-     * @param fee Fee paid to the relayer
-     * @param tokenContract Address of the token contract used for the fee
-     */
-    function execDelegatecall(address contractAddress, bytes memory data, uint fee, address tokenContract, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (bool) {
-        uint currentNonce = abi.decode(store["nonce"], (uint));
-        require(abi.decode(store["owner"], (address)) == recover(keccak256(abi.encodePacked(msg.sender, contractAddress, tokenContract, abi.decode(store["factory"], (address)), data, fee, tx.gasprice, currentNonce)), v, r, s));
-        require(_execDelegatecall(contractAddress, data));
         IERC20 token = IERC20(tokenContract);
         store["nonce"] = abi.encode(currentNonce+1);
         require(token.transfer(msg.sender, fee));
@@ -549,36 +510,6 @@ contract Factory {
         addr = deployCreate2(signer);
         SmartWallet wallet = SmartWallet(uint160(addr));
         require(wallet.execCall(contractAddress, data, msgValue));
-        require(wallet.initiate(signer, msg.sender, fee, token));
-        emit Deployed(addr, signer);
-    }
-    
-    /**
-     * @dev Allows user to deploy their wallet and execute a delegatecall operation to a foreign contract.
-     * @param contractAddress Address of the contract to delegatecall
-     * @param data calldata to send to contractAddress
-     */
-    function deployWalletExecDelegatecall(address contractAddress, bytes memory data) public returns (address) {
-        address addr = deployCreate2(msg.sender);
-        SmartWallet wallet = SmartWallet(uint160(addr));
-        require(wallet.execDelegatecall(contractAddress, data));
-        require(wallet.initiate(msg.sender));
-        emit Deployed(addr, msg.sender);
-        return addr;
-    }
-    
-    /**
-     * @dev Allows a relayer to deploy a wallet and execute a delegatecall operation to a foreign contract on behalf of a user.
-     * @param contractAddress Address of the contract to delegatecall
-     * @param data calldata to send to contractAddress
-     * @param fee Fee paid to the relayer
-     * @param token Address of the token contract for the fee
-     */
-    function deployWalletExecDelegatecall(address contractAddress, bytes memory data, uint fee, address token, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (address addr) {
-        address signer = recover(keccak256(abi.encodePacked(address(this), msg.sender, token, contractAddress, data, tx.gasprice, fee)), v, r, s);
-        addr = deployCreate2(signer);
-        SmartWallet wallet = SmartWallet(uint160(addr));
-        require(wallet.execDelegatecall(contractAddress, data));
         require(wallet.initiate(signer, msg.sender, fee, token));
         emit Deployed(addr, signer);
     }
