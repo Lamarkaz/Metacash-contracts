@@ -123,7 +123,7 @@ contract SmartWallet {
         // Access ERC20 token
         IERC20 tokenContract = IERC20(token);
         // Send fee to relay
-        require(tokenContract.transfer(relay, fee), "fee transfer failed");
+        tokenContract.transfer(relay, fee);
         return true;
     }
     
@@ -139,8 +139,8 @@ contract SmartWallet {
         require(abi.decode(store["owner"], (address)) == recover(keccak256(abi.encodePacked(msg.sender, to, tokenContract, abi.decode(store["factory"], (address)), value, fee, tx.gasprice, currentNonce)), v, r, s));
         IERC20 token = IERC20(tokenContract);
         store["nonce"] = abi.encode(currentNonce+1);
-        require(token.transfer(to, value));
-        require(token.transfer(msg.sender, fee));
+        token.transfer(to, value);
+        token.transfer(msg.sender, fee);
         return true;
     }
     
@@ -152,7 +152,7 @@ contract SmartWallet {
      */
     function pay(address to, uint value, address tokenContract) onlyOwner public returns (bool) {
         IERC20 token = IERC20(tokenContract);
-        require(token.transfer(to, value));
+        token.transfer(to, value);
         return true;
     }
     
@@ -162,7 +162,7 @@ contract SmartWallet {
     function pay(address[] memory to, uint[] memory value, address[] memory tokenContract) onlyOwner public returns (bool) {
         for (uint i; i < to.length; i++) {
             IERC20 token = IERC20(tokenContract[i]);
-            require(token.transfer(to[i], value[i]));
+            token.transfer(to[i], value[i]);
         }
         return true;
     }
@@ -228,7 +228,7 @@ contract SmartWallet {
         require(abi.decode(store["owner"], (address)) == recover(keccak256(abi.encodePacked(msg.sender, contractAddress, tokenContract, abi.decode(store["factory"], (address)), data, msgValue, fee, tx.gasprice, currentNonce)), v, r, s));
         IERC20 token = IERC20(tokenContract);
         store["nonce"] = abi.encode(currentNonce+1);
-        require(token.transfer(msg.sender, fee));
+        token.transfer(msg.sender, fee);
         require(_execCall(contractAddress, data, msgValue));
         return true;
     }
@@ -254,7 +254,7 @@ contract SmartWallet {
         require(_execCreate(data));
         IERC20 token = IERC20(tokenContract);
         store["nonce"] = abi.encode(currentNonce+1);
-        require(token.transfer(msg.sender, fee));
+        token.transfer(msg.sender, fee);
         return true;
     }
     
@@ -281,7 +281,7 @@ contract SmartWallet {
         require(_execCreate2(data, salt));
         IERC20 token = IERC20(tokenContract);
         store["nonce"] = abi.encode(currentNonce+1);
-        require(token.transfer(msg.sender, fee));
+        token.transfer(msg.sender, fee);
         return true;
     }
     
@@ -312,7 +312,7 @@ contract SmartWallet {
         store["nonce"] = abi.encode(currentNonce+1);
         store["fallback"] = abi.encode(implementation);
         IERC20 feeToken = IERC20(feeContract);
-        require(feeToken.transfer(msg.sender, fee));
+        feeToken.transfer(msg.sender, fee);
         emit Upgrade(implementation);
         return true;
         
