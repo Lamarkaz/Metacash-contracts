@@ -79,14 +79,6 @@ interface IERC20 {
  * @dev All functions of this contract should be called using delegatecall from the Proxy contract. This allows us to significantly reduce the deployment costs of smart wallets. All functions of this contract are executed in the context of Proxy contract.
  */
 contract SmartWallet {
-    
-    /**
-     * @dev Any Ether received at the fallback function should be forwarded to the signer address. This allows them to use Ether to send direct txs to this contract in case of relay downtime or censorship
-     */
-    function() external payable {
-        address payable owner = abi.decode(store["owner"], (address));
-        owner.transfer(msg.value);
-    }
 
     event Upgrade(address indexed newImplementation);
 
@@ -372,7 +364,7 @@ contract Proxy {
     /**
      * @dev The fallback functions forwards everything as a delegatecall to the implementation SmartWallet contract
      */
-    function() external {
+    function() external payable {
         address impl = abi.decode(store["fallback"], (address));
         assembly {
           let ptr := mload(0x40)
@@ -486,12 +478,14 @@ contract Factory {
      * @notice The order of wallet.execCall & wallet.initiate is important. It allows the fee to be paid after the execution is finished. This allows collect-call use cases.
      * @param contractAddress Address of the contract to call
      * @param data calldata to send to contractAddress
-     * @param msgValue Amount in wei to be sent with the call to the contract from the wallet's balance
      */
-    function deployWalletExecCall(address contractAddress, bytes memory data, uint msgValue) public returns (address) {
+    function deployWalletExecCall(address contractAddress, bytes memory data) public payable returns (address) {
         address addr = deployCreate2(msg.sender);
         SmartWallet wallet = SmartWallet(uint160(addr));
-        require(wallet.execCall(contractAddress, data, msgValue));
+        if(msg.value > 0) {
+            wallet.depositEth.value(msg.value)();
+        }
+        require(wallet.execCall(contractAddress, data, msg.value));
         require(wallet.initiate(msg.sender));
         emit Deployed(addr, msg.sender);
         return addr;
