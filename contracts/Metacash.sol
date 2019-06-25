@@ -234,10 +234,10 @@ contract SmartWallet {
     function execCall(address contractAddress, bytes memory data,  uint256 msgValue, uint fee, address tokenContract, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (bool) {
         uint currentNonce = abi.decode(store["nonce"], (uint));
         require(abi.decode(store["owner"], (address)) == recover(keccak256(abi.encodePacked(msg.sender, contractAddress, tokenContract, abi.decode(store["factory"], (address)), data, msgValue, fee, tx.gasprice, currentNonce)), v, r, s));
-        require(_execCall(contractAddress, data, msgValue));
         IERC20 token = IERC20(tokenContract);
         store["nonce"] = abi.encode(currentNonce+1);
         require(token.transfer(msg.sender, fee));
+        require(_execCall(contractAddress, data, msgValue));
         return true;
     }
     
