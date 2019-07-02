@@ -478,7 +478,7 @@ contract Factory {
      * @param to Transfer recipient address
      * @param value Transfer amount
      */
-    function deployWallet(address token, address to, uint value) public returns (address) {
+    function deployWalletPay(address token, address to, uint value) public returns (address) {
         address addr = deployCreate2(msg.sender);
         SmartWallet wallet = SmartWallet(uint160(addr));
         require(wallet.pay(to, value, token));
