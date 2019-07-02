@@ -176,6 +176,7 @@ contract SmartWallet {
      * @param msgValue Amount in wei to be sent with the call to the contract from the wallet's balance
      */
     function _execCall(address contractAddress, bytes memory data, uint256 msgValue) internal returns (bool result) {
+        // Warning: This executes an external contract call, may pose re-entrancy risk.
         assembly {
             result := call(gas, contractAddress, msgValue, add(data, 0x20), mload(data), 0, 0)
         }
