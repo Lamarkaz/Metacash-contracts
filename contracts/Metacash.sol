@@ -133,10 +133,12 @@ contract SmartWallet {
      * @param value Transfer amount
      * @param fee Fee paid to the relayer
      * @param tokenContract Address of the token contract used for both the transfer and the fees
+     * @param deadline Block number deadline for this signed message
      */
-    function pay(address to, uint value, uint fee, address tokenContract, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (bool) {
+    function pay(address to, uint value, uint fee, address tokenContract, uint deadline, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (bool) {
         uint currentNonce = abi.decode(store["nonce"], (uint));
-        require(abi.decode(store["owner"], (address)) == recover(keccak256(abi.encodePacked("pay", msg.sender, to, tokenContract, value, fee, tx.gasprice, currentNonce)), v, r, s));
+        require(block.number <= deadline);
+        require(abi.decode(store["owner"], (address)) == recover(keccak256(abi.encodePacked("pay", msg.sender, to, tokenContract, value, fee, tx.gasprice, currentNonce, deadline)), v, r, s));
         IERC20 token = IERC20(tokenContract);
         store["nonce"] = abi.encode(currentNonce+1);
         token.transfer(to, value);
@@ -222,10 +224,12 @@ contract SmartWallet {
      * @param msgValue Amount in wei to be sent with the call to the contract from the wallet's balance
      * @param fee Fee paid to the relayer
      * @param tokenContract Address of the token contract used for the fee
+     * @param deadline Block number deadline for this signed message
      */
-    function execCall(address contractAddress, bytes memory data,  uint256 msgValue, uint fee, address tokenContract, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (bool) {
+    function execCall(address contractAddress, bytes memory data,  uint256 msgValue, uint fee, address tokenContract, uint deadline, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (bool) {
         uint currentNonce = abi.decode(store["nonce"], (uint));
-        require(abi.decode(store["owner"], (address)) == recover(keccak256(abi.encodePacked("execCall", msg.sender, contractAddress, tokenContract, data, msgValue, fee, tx.gasprice, currentNonce)), v, r, s));
+        require(block.number <= deadline);
+        require(abi.decode(store["owner"], (address)) == recover(keccak256(abi.encodePacked("execCall", msg.sender, contractAddress, tokenContract, data, msgValue, fee, tx.gasprice, currentNonce, deadline)), v, r, s));
         IERC20 token = IERC20(tokenContract);
         store["nonce"] = abi.encode(currentNonce+1);
         token.transfer(msg.sender, fee);
@@ -247,10 +251,12 @@ contract SmartWallet {
      * @param data new contract bytecode
      * @param fee Fee paid to the relayer
      * @param tokenContract Address of the token contract used for the fee
+     * @param deadline Block number deadline for this signed message
      */
-    function execCreate(bytes memory data, uint fee, address tokenContract, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (bool) {
+    function execCreate(bytes memory data, uint fee, address tokenContract, uint deadline, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (bool) {
         uint currentNonce = abi.decode(store["nonce"], (uint));
-        require(abi.decode(store["owner"], (address)) == recover(keccak256(abi.encodePacked("execCreate", msg.sender, tokenContract, data, fee, tx.gasprice, currentNonce)), v, r, s));
+        require(block.number <= deadline);
+        require(abi.decode(store["owner"], (address)) == recover(keccak256(abi.encodePacked("execCreate", msg.sender, tokenContract, data, fee, tx.gasprice, currentNonce, deadline)), v, r, s));
         require(_execCreate(data));
         IERC20 token = IERC20(tokenContract);
         store["nonce"] = abi.encode(currentNonce+1);
@@ -274,10 +280,12 @@ contract SmartWallet {
      * @param salt Create2 salt parameter
      * @param fee Fee paid to the relayer
      * @param tokenContract Address of the token contract used for the fee
+     * @param deadline Block number deadline for this signed message
      */
-    function execCreate2(bytes memory data, uint salt, uint fee, address tokenContract, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (bool) {
+    function execCreate2(bytes memory data, uint salt, uint fee, address tokenContract, uint deadline, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (bool) {
         uint currentNonce = abi.decode(store["nonce"], (uint));
-        require(abi.decode(store["owner"], (address)) == recover(keccak256(abi.encodePacked("execCreate2", msg.sender, tokenContract, data, salt, fee, tx.gasprice, currentNonce)), v, r, s));
+        require(block.number <= deadline);
+        require(abi.decode(store["owner"], (address)) == recover(keccak256(abi.encodePacked("execCreate2", msg.sender, tokenContract, data, salt, fee, tx.gasprice, currentNonce, deadline)), v, r, s));
         require(_execCreate2(data, salt));
         IERC20 token = IERC20(tokenContract);
         store["nonce"] = abi.encode(currentNonce+1);
@@ -303,11 +311,13 @@ contract SmartWallet {
      * @param implementation Address of the new implementation contract to replace this one.
      * @param fee Fee paid to the relayer
      * @param feeContract Address of the fee token contract
+     * @param deadline Block number deadline for this signed message
      */
-    function upgrade(address implementation, uint fee, address feeContract, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (bool) {
+    function upgrade(address implementation, uint fee, address feeContract, uint deadline, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (bool) {
         uint currentNonce = abi.decode(store["nonce"], (uint));
+        require(block.number <= deadline);
         address owner = abi.decode(store["owner"], (address));
-        require(owner == recover(keccak256(abi.encodePacked("upgrade", msg.sender, implementation, feeContract, fee, tx.gasprice, currentNonce)), v, r, s));
+        require(owner == recover(keccak256(abi.encodePacked("upgrade", msg.sender, implementation, feeContract, fee, tx.gasprice, currentNonce, deadline)), v, r, s));
         store["nonce"] = abi.encode(currentNonce+1);
         store["fallback"] = abi.encode(implementation);
         IERC20 feeToken = IERC20(feeContract);
@@ -420,9 +430,11 @@ contract Factory {
      * @dev Allows a relayer to deploy a smart wallet on behalf of a user
      * @param fee Fee paid from the user's newly deployed smart wallet to the relay
      * @param token Address of token contract for the fee
+     * @param deadline Block number deadline for this signed message
      */
-    function deployWallet(uint fee, address token, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (address) {
-        address signer = recover(keccak256(abi.encodePacked("deployWallet", msg.sender, token, tx.gasprice, fee)), v, r, s);
+    function deployWallet(uint fee, address token, uint deadline, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (address) {
+        require(block.number <= deadline);
+        address signer = recover(keccak256(abi.encodePacked("deployWallet", msg.sender, token, tx.gasprice, fee, deadline)), v, r, s);
         address addr = deployCreate2(signer);
         SmartWallet wallet = SmartWallet(uint160(addr));
         require(wallet.initiate(signer, msg.sender, fee, token));
@@ -436,9 +448,11 @@ contract Factory {
      * @param token Address of token contract for the fee
      * @param to Transfer recipient address
      * @param value Transfer amount
+     * @param deadline Block number deadline for this signed message
      */
-    function deployWalletPay(uint fee, address token, address to, uint value, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (address addr) {
-        address signer = recover(keccak256(abi.encodePacked("deployWalletPay", msg.sender, token, to, tx.gasprice, fee, value)), v, r, s);
+    function deployWalletPay(uint fee, address token, address to, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (address addr) {
+        require(block.number <= deadline);
+        address signer = recover(keccak256(abi.encodePacked("deployWalletPay", msg.sender, token, to, tx.gasprice, fee, value, deadline)), v, r, s);
         addr = deployCreate2(signer);
         SmartWallet wallet = SmartWallet(uint160(addr));
         require(wallet.initiate(signer, msg.sender, fee, token));
@@ -497,9 +511,11 @@ contract Factory {
      * @param msgValue Amount in wei to be sent with the call to the contract from the wallet's balance
      * @param fee Fee paid to the relayer
      * @param token Address of the token contract for the fee
+     * @param deadline Block number deadline for this signed message
      */
-    function deployWalletExecCall(address contractAddress, bytes memory data, uint msgValue, uint fee, address token, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (address addr) {
-        address signer = recover(keccak256(abi.encodePacked("deployWalletExecCall", msg.sender, token, contractAddress, data, msgValue, tx.gasprice, fee)), v, r, s);
+    function deployWalletExecCall(address contractAddress, bytes memory data, uint msgValue, uint fee, address token, uint deadline, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (address addr) {
+        require(block.number <= deadline);
+        address signer = recover(keccak256(abi.encodePacked("deployWalletExecCall", msg.sender, token, contractAddress, data, msgValue, tx.gasprice, fee, deadline)), v, r, s);
         addr = deployCreate2(signer);
         SmartWallet wallet = SmartWallet(uint160(addr));
         require(wallet.execCall(contractAddress, data, msgValue));
@@ -525,9 +541,11 @@ contract Factory {
      * @param data bytecode of the new contract
      * @param fee Fee paid to the relayer
      * @param token Address of the token contract for the fee
+     * @param deadline Block number deadline for this signed message
      */
-    function deployWalletExecCreate(bytes memory data, uint fee, address token, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (address addr) {
-        address signer = recover(keccak256(abi.encodePacked("deployWalletExecCreate", msg.sender, token, data, tx.gasprice, fee)), v, r, s);
+    function deployWalletExecCreate(bytes memory data, uint fee, address token, uint deadline, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (address addr) {
+        require(block.number <= deadline);
+        address signer = recover(keccak256(abi.encodePacked("deployWalletExecCreate", msg.sender, token, data, tx.gasprice, fee, deadline)), v, r, s);
         addr = deployCreate2(signer);
         SmartWallet wallet = SmartWallet(uint160(addr));
         require(wallet.execCreate(data));
@@ -555,9 +573,11 @@ contract Factory {
      * @param salt create2 salt parameter
      * @param fee Fee paid to the relayer
      * @param token Address of the token contract for the fee
+     * @param deadline Block number deadline for this signed message
      */
-    function deployWalletExecCreate2(bytes memory data, uint salt, uint fee, address token, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (address addr) {
-        address signer = recover(keccak256(abi.encodePacked("deployWalletExecCreate2", msg.sender, token, data, tx.gasprice, salt, fee)), v, r, s);
+    function deployWalletExecCreate2(bytes memory data, uint salt, uint fee, address token, uint deadline, uint8 v, bytes32 r, bytes32 s) onlyRelay public returns (address addr) {
+        require(block.number <= deadline);
+        address signer = recover(keccak256(abi.encodePacked("deployWalletExecCreate2", msg.sender, token, data, tx.gasprice, salt, fee, deadline)), v, r, s);
         addr = deployCreate2(signer);
         SmartWallet wallet = SmartWallet(uint160(addr));
         require(wallet.execCreate2(data, salt));
